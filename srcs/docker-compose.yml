@@ -1,0 +1,78 @@
+version: '3.8'
+services:
+  nginx:
+    image: nginx:nginx
+    container_name: nginx
+    build:
+      context: ./requirements/nginx
+      dockerfile: Dockerfile
+    ports:
+      - 443:443
+    volumes:
+      - wordpress_data:/var/www/html
+    restart: always
+    networks:
+      - network
+    depends_on:
+      wordpress:
+        condition: service_healthy
+
+  wordpress:
+    image: wordpress:wordpress
+    container_name: wordpress
+    build:
+      context: ./requirements/wordpress
+      dockerfile: Dockerfile
+    volumes:
+      - wordpress_data:/var/www/html
+    restart: always
+    networks:
+      - network
+    env_file:
+      - .env
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    healthcheck:
+      test: cat $WORDPRESS_HEALTH
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  mariadb:
+    image: mariadb:mariadb
+    container_name: mariadb
+    build:
+      context: ./requirements/mariadb
+      dockerfile: Dockerfile
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    restart: always
+    networks:
+      - network
+    env_file:
+      - .env
+    healthcheck:
+      test: cat $MARIADB_HEALTH
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  wordpress_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: /home/yim/data/wordpress
+      o: bind
+
+  mariadb_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: /home/yim/data/mysql
+      o: bind
+
+networks:
+  network:
+    driver: bridge
